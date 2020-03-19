@@ -1,3 +1,5 @@
+//문자열	끊어서 출력해주기 
+
 #include <iostream>
 #include <string>
 

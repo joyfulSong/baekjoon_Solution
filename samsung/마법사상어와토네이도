@@ -1,0 +1,145 @@
+#include <iostream>
+#include <array>
+#include <vector>
+
+using namespace std;
+
+int N, map[500][500];
+int dr[4] = { 0, +1, 0, -1 }; //서남동북
+int dc[4] = { -1, 0, +1, 0 };
+
+// y에 해당하는 모래의 양을 비율에 맞게 맵에 저장
+// 서, 동은 세로중심으로 3531, 북,남은 가로 중심으로 3531
+void makePortion(int dr, int dc, int dir)
+{
+    int o_sand(map[dr][dc]);
+    int mv(0); // 방향에 따라 이동이 달라지므로
+    if (dir % 2 == 0) //서동
+    {
+        if (dir == 0) mv = 1; // 서쪽 이동은 열(c)이 +1 0 -1 -2
+        else mv = -1; // 동쪽 이동은 -1, 0, 1, 2
+
+        map[dr - 1][dc + mv] = map[dr + 1][dc + mv] += (o_sand * 0.01) / 1; // 1%
+        map[dr - 1][dc] = map[dr + 1][dc] += (o_sand * 0.07) / 1; // 7%
+        map[dr - 2][dc] = map[dr + 2][dc] += (o_sand * 0.02) / 1; // 2%
+        map[dr - 1][dc - mv] = map[dr + 1][dc - mv] += (o_sand * 0.1) / 1; //10%
+        map[dr][dc - 2 * mv] += (o_sand * 0.05) / 1; //5%
+        map[dr][dc - mv] += (o_sand * 0.55) / 1; //a = 55%
+    }
+    else // 남북
+    {
+        if (dir == 1) mv = 1; // 남쪽 이동은 행(r)이 -1, 0, 1, 2
+        else mv = -1; // 북쪽 이동은 +1 0 -1 -2
+
+        map[dr - mv][dc - 1] = map[dr - mv][dc + 1] += (o_sand * 0.01) / 1; // 1%
+        map[dr][dc - 1] = map[dr][dc + 1] += (o_sand * 0.07) / 1; // 7%
+        map[dr][dc - 2] = map[dr][dc + 2] + = (o_sand * 0.02) / 1; // 2%
+        map[dr + mv][dc - 1] = map[dr + mv][dc + 1] += (o_sand * 0.1) / 1; //10%
+        map[dr + 2 * mv][dc] += (o_sand * 0.05) / 1; //5%
+        map[dr + mv][dc] += (o_sand * 0.55) / 1; //a = 55%
+    }
+}
+
+
+// 주어진 맵 범위 밖에 쌓여있는 모래를 누적합
+// 1 ~ N 외에 map의 -2, -1, N+1, N+2 영역에 있는 모래의 합을 구한다.
+void Outofgrid(int& outgrid)
+{
+    for (int i = 11 - 2; i < 11; ++i) // 행의 범위 이전값, 열의 이전값
+    {
+        for (int j = 11; j < N + 11; ++j)
+        {
+            outgrid += map[i][j] + map[j][i];
+        }
+    }
+
+    for (int i = N + 11; i < N + 11 + 2; ++i) // 행과 열의 범위 이후값
+    {
+        for (int j = 11; j < N + 11; ++j)
+        {
+            outgrid += map[i][j] + map[j][i];
+        }
+    }
+}
+
+void changeDir(int& rdir)
+{
+    if (rdir == 3)
+    {
+        rdir = 0;
+    }
+    else
+    {
+        ++rdir;
+    }
+    cout << "dir is " << rdir << endl;
+}
+
+void print()
+{
+    for (int i = 11 -2; i < N + 11 + 2; ++i)
+    {
+        for (int j = 11-2; j < N + 11 + 2; ++j)
+        {
+            cout << map[i][j] << endl;
+        }
+    }
+}
+
+int main()
+{
+    int r, c; // r,c: 좌표 저장
+    int dir(0); //서 남 동 북 방향 저장
+
+    cin >> N;
+    int tmp;
+    for (int i = 11; i < N + 11; ++i)
+    {
+        for (int j = 11; j < N + 11; ++j)
+        {
+            cin >> tmp;
+            if (tmp != 0)
+            {
+                map[i][j] = tmp;
+            }
+        }
+    }
+    print();
+
+    r = c = 11 + (N - 1) / 2; // 가운데에서 시작
+
+    // N == 7, 1~5칸까지는 두방향씩움직이고, 6칸은 세방향 이동함
+    for (int k = 1; k < N - 1; ++k)
+    {
+        for (int i = 0; i < 2; ++i) // 같은 개수 칸 이동 두번 사용
+        {
+            for (int j = 1; i < k + 1; ++j)
+            {
+                // map[r][c]에 대해 j번 이동, 각 이동은 서->남->동->북 순 이동
+                // j가 끝날때까지 같은 dr, dc 유지
+                // i에 대해서는 방향 1회 전환
+                makePortion(r + dr[dir], c + dc[dir], dir);
+                print();
+            }
+        }
+        changeDir(dir);
+    }
+
+    for (int i = 0; i < 3; ++i) // 같은 방향 세번 사용
+    {
+        for (int j = 1; i < N; ++j)
+        {
+            makePortion(r + dr[dir], c + dc[dir], dir);
+            print();
+
+            if (r + dr[dir] == 1 && c + dc[dir] == 1) cout << "we arrived at (1,1)" << endl;
+        }
+        changeDir(dir);
+    }
+
+    print();
+    int outgrid(0); // 범위 밖에 모래가 쌓이게 되면 outgrid에 저장한다 
+    Outofgrid(outgrid);
+    cout << outgrid << endl;
+    return 0;
+}

@@ -1,0 +1,284 @@
+/* map은 key+ value, set은 key만 에 대해서 오름차순으로 자동 정렬됨. 단, '유일키'이기 때문에 중복이 안됨.
+중복허용하고 정렬하기 위해서는 vector와 algorithm의 sort를 써야함.*/
+#include <iostream>
+#include <queue>
+#include <vector>
+#include <algorithm>
+
+#define MAXN 15
+#define MAXM 30
+using namespace std;
+
+int n, m, timeT;
+int dr[4] = { -1, 0, 0, 1 }; //상, 좌, 우, 하 이동
+int dc[4] = { 0, -1, 1, 0 };
+
+int map[MAXN+1][MAXN+1], dis[MAXN+1][MAXN+1], ch[MAXN+1][MAXN+1]; // 격자까지 이동 거리, 이동했는지 여부 확인용 배열
+int convinent[MAXM+1][2], member[MAXM+1][2];  // 편의점 위치와 현재 i번째 사람의 위치를 알기 위함
+
+void initArray()
+{
+    for (int i(1); i < n + 1; ++i)
+    {
+        for (int j(1); j < n + 1; ++j)
+        {
+            dis[i][j] = ch[i][j] = 0;
+        }
+    }
+}
+
+bool isInmap(int r, int c)
+{
+    if (r > 0 && r < n + 1 && c > 0 && c < n + 1) return true;
+    else return false;
+}
+
+bool oneArrived(int i)
+{
+    if (member[i][0] == convinent[i][0] && member[i][1] == convinent[i][1])
+    {
+       return true;
+    }
+    return false;
+}
+
+// i번째 사람의 편의점에서 자기 위치까지의 최단거리 맵 생성
+void moveToConvinent(int r, int c)
+{
+    initArray();
+
+    queue<pair<int, int> > q;
+
+    q.push(make_pair(r, c));
+    ch[r][c] = 1;
+
+    pair<int, int> tmp;
+
+    while (!q.empty())
+    {
+        tmp = q.front();
+        q.pop();
+
+        int t_r = tmp.first;
+        int t_c = tmp.second;
+
+        //현재 위치에 대해 상좌우하 이동
+        for (int j(0); j < 4; ++j)
+        {
+            int n_r = t_r + dr[j];
+            int n_c = t_c + dc[j];
+
+            //범위 내에서만 이동
+            if (isInmap(n_r, n_c))
+            {
+                // 이전에 이동하지 않았을 경우, 누가 도착한 곳이 아닌 경우에 대해서만 이동
+                if (ch[n_r][n_c] != 1 && map[n_r][n_c] !=2)
+                {
+                    ch[n_r][n_c] = 1;
+                    dis[n_r][n_c] = dis[t_r][t_c] + 1; //이전까지 이동한 거리 + 1
+                    q.push(make_pair(n_r, n_c));
+                }
+
+            }
+        }
+    }
+}
+
+// r, c에 위치한 편의점으로 부터 베이스캠프까지의 최단거리를 찾아서, 사람을 위치시킨다.
+pair<int, int> moveToBase(int r, int c)
+{
+    initArray();
+    
+    queue<pair<int, int>> q;
+
+    q.push(make_pair(r, c));
+    ch[r][c] = 1;
+
+    pair<int, int> tmp;
+
+    //최종 베이스캠프 위치 저장용
+    int b_r(0), b_c(0);
+    int minDis(300);
+
+    while (!q.empty())
+    {
+        tmp = q.front();
+        q.pop();
+
+        int t_r = tmp.first;
+        int t_c = tmp.second;
+
+        //현재 위치에 대해 상좌우하 이동
+        for (int j(0); j < 4; ++j)
+        {
+            int n_r = t_r + dr[j];
+            int n_c = t_c + dc[j];
+            // 최대 범위 내에서만 이동
+            if (isInmap(n_r, n_c))
+            {
+                // 누군가 이미 도착한 곳이 아니고, 이전에 온 곳이 아닌 경우에 지나간다.
+                if (map[n_r][n_c] != 2 && ch[n_r][n_c] != 1)
+                {
+                    ch[n_r][n_c] = 1;
+                    dis[n_r][n_c] = dis[t_r][t_c] + 1; //이전까지 이동한 거리 + 1
+                    q.push(make_pair(n_r, n_c));
+
+                    // 베이스캠프인 경우, 위치 저장.
+                    if (map[n_r][n_c] == 1)
+                    {
+                        // 그전 최소거리와 같은 최소거리를 갖으면, 행과 열을 비교해서 갱신한다.
+                        if (minDis == dis[n_r][n_c])
+                        {
+                            if (b_r > n_r)
+                            {
+                                b_r = n_r;
+                                b_c = n_c;
+                            }
+                            else if (b_r == n_r)
+                            {
+                                if (b_c > n_c)
+                                {
+                                    b_r = n_r;
+                                    b_c = n_c;
+                                }
+                            }
+                        }
+                        // 단순히 지금이 더 최소이면, 갱신한다.
+                        else if (minDis > dis[n_r][n_c])
+                        {
+                            minDis = dis[n_r][n_c];
+                            b_r = n_r;
+                            b_c = n_c;
+                        }
+                    }
+
+                }
+
+            }
+
+        }
+    }
+    return make_pair(b_r, b_c);
+}
+
+void Simulation()
+{
+    //m명의 사람들에 대해 격자 내 이동을 진행, 도착할때까지 반복 
+    for (int j(1); j < m + 1; ++j)
+    {
+        if (oneArrived(j) || member[j][0] == -1 && member[j][1] == -1)
+        {
+            continue;
+        }
+
+        //이전에 베이스캠프 내로 이동했어야만 편의점 이동 허용
+        moveToConvinent(convinent[j][0], convinent[j][1]);
+
+        //j번째 사람이 미리 이동해본 뒤 생성한 dis, ch맵을 통해 최소값을 갖는 다음 이동경로로 한칸 이동
+        int minVal(300);
+        int f_r(0), f_c(0);
+        for (int k(0); k < 4; ++k)
+        {
+            int t_r = member[j][0] + dr[k];
+            int t_c = member[j][1] + dc[k];
+
+            // 맵 범위 내에 있고, 누가 도착한 곳이 아닌 경우인지 확인.
+            if (isInmap(t_r, t_c) && map[t_r][t_c] != 2)
+            {
+                // 방금 지나갔던 경로여야함.
+                if (ch[t_r][t_c] == 1)
+                {                    
+                    // dis 값이 최소인 경우에 대해서만 이동 가능 위치를 갱신할 것임.
+                    if (minVal == dis[t_r][t_c])
+                    {
+                        if (t_r < f_r)
+                        {
+                            minVal = dis[t_r][t_c];
+                            f_r = t_r;
+                            f_c = t_c;
+                        }
+                        else if (t_r == f_r)
+                        {
+                            if (t_c < f_c)
+                            {
+                                minVal = dis[t_r][t_c];
+                                f_r = t_r;
+                                f_c = t_c;
+                            }
+                        }
+                    }
+                    else if (minVal > dis[t_r][t_c])
+                    {
+                        minVal = dis[t_r][t_c];
+                        f_r = t_r;
+                        f_c = t_c;
+                    }
+                }
+            }
+        }
+        // 이동 위치로 갱신
+        member[j][0] = f_r;
+        member[j][1] = f_c;
+
+        // std::cout << "[" << timeT << "] " << j << "th member: " << f_r << ", " << f_c << '\n';
+        if (oneArrived(j))
+        {
+            //도착한 경우 2로 마킹하여 아무도 못진입하게 함.
+            map[member[j][0]][member[j][1]] = 2;
+        }
+    }
+    // j번째 사람이 아직 격자밖이면 도착해야하는 편의점에서 가장 가까운 베이스캠프로 이동
+    if (timeT <= m && member[timeT][0] == -1 && member[timeT][1] == -1)
+    {
+        pair<int, int> newbase = moveToBase(convinent[timeT][0], convinent[timeT][1]);
+        member[timeT][0] = newbase.first;
+        member[timeT][1] = newbase.second;
+
+            // std::cout << timeT << " th member loc " << newbase.first << " " << newbase.second << '\n';
+
+        //더이상 이동 못하도록 2로 막는다.
+        map[member[timeT][0]][member[timeT][1]] = 2;
+    }
+}
+
+bool allisArrived()
+{
+    for (int i(1); i < m + 1; ++i)
+    {
+        if (convinent[i][0] != member[i][0] ||  convinent[i][1] != member[i][1])
+        {
+            return false;
+        }
+    }
+    return true;
+}
+
+int main()
+{
+    cin >> n >> m;
+
+    for (int i(1); i < n+1; ++i)
+    {
+        for (int j(1); j < n+1; ++j)
+        {
+            cin >> map[i][j];
+        }
+    }
+
+    for (int i(1); i < m+1; ++i)
+    {
+        cin >> convinent[i][0] >> convinent[i][1];
+        member[i][0] = member[i][1] = -1; // 사람의 위치 초기화
+    }
+    
+    while (1)
+    {
+        ++timeT;
+        Simulation();
+
+        if (allisArrived()) break;
+    }
+
+    cout << timeT << '\n';
+    return 0;
+}

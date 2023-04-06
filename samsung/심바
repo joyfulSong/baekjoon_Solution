@@ -1,0 +1,150 @@
+//1칸 이동이 1초이다. (1초에 상하좌우 1번만 되니, 2칸 이동하려면 2초걸리므로.)
+#include <iostream>
+#include <vector> 
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+
+int map[21][21], ch[21][21], dx[4] = { 0, 1, 0, -1 }, dy[4] = { 1, 0, -1, 0 };
+
+struct State {
+	//심바 좌표와 출발지점으로부터의 거리. 
+	int x, y, dis;
+	State(int a, int b, int c) {
+		x = a;
+		y = b;
+		dis = c;
+	}
+	//우선순위 큐 사용 오퍼레이터, 최소힙 써서 거리 가장 짧은것(심바가 갈 수 있는 곳 다 넣고 최소위치 얻어냄.), 가장 위쪽(x가 최소), 가장 왼쪽(y가최소)를 반환하도록 한다.
+	bool operator < (const State& bb)const {
+		if (dis == bb.dis) {
+			// 비교하려는 거리와 현재 거리가 같으면
+			if (x == bb.x) return y > bb.y; //높이가 같으면 가장 왼쪽에 있는 것을 반환
+			else return x > bb.x;
+		}
+		else return dis > bb.dis;
+	}
+};
+
+struct Lion {
+	int x, y, s, ate; //현재 심바 위치, 사이즈, 먹은 갯수
+	void sizeUp() {
+		ate = 0;
+		s++;
+		//사이즈 업이 호출되면 ate초기화, 사이즈 하나 증가.
+		//ate와 size 크기 비교해서 같으면 크게 할거임.
+	}
+};
+
+int main()
+{
+	int n, res = 0;
+	priority_queue<State> Q;
+	Lion simba; // 라이언 구조체 하나 잡고,
+	cin >> n;
+
+	for (int i = 1; i < n + 1; i++) {
+		for (int j = 1; j < n + 1; j++) {
+			cin >> map[i][j];
+			if (map[i][j] == 9) {
+				//심바 찾으면 위치 저장
+				simba.x = i;
+				simba.y = j;
+				map[i][j] = 0; //찾은곳은 0으로 만든다.
+			}
+		}
+	}
+	// 큐 돌리기 전에 첨 심바 위치 푸쉬한다.
+	Q.push(State(simba.x, simba.y, 0));
+	//사이즈와 ate 초기화
+	simba.s = 2;
+	simba.ate = 0;
+
+	while (!Q.empty()) {
+		//상하좌우 탐색으로 집어넣은 (심바보다 사이즈 작고, 범위 안이며 처음 방문한 곳) 것 중 우선순위 최소힙값으로 맨 위에 올라간 것 큐에서 꺼내기
+		State tmp = Q.top();
+		Q.pop();
+
+		int x = tmp.x;
+		int y = tmp.y;
+		int z = tmp.dis;
+		if (map[x][y] != 0 && map[x][y] < simba.s) {
+			// 토끼가 있고, 심바사이즈보다 작으면 먹을 수 있으니 심바위치 갱신
+			simba.x = x;
+			simba.y = y;
+			simba.ate++;
+			if (simba.ate >= simba.s) simba.sizeUp(); // 먹은갯수가 사이즈 이상이되면 사이즈 증가하도록 먹을때마다 체크해줌.
+			map[x][y] = 0; // 먹은 곳은 이제 0으로 만듬.
+			// 지난번 1초 방문으로 큐에 들어갈 수 있는 곳은 다 넣고 최소힙을 꺼냈으니, 다음 for문을 돌기전에 체크베열을 다 해제해주고 큐에서도 다빼내준다.
+			for (int i = 1; i <= n; i++) {
+				for (int j = 1; j <= n; j++) {
+					ch[i][j] = 0;
+				}
+			}
+			while (!Q.empty()) Q.pop();
+			res = tmp.dis; //tmp.dis는 bfs탐색시 큐에서 꺼낸 심바값이 가진 dis에+1한게 들어가있고, 그값을 res에 저장한뒤에 다음번 순회때도 누적된 값을 다시 저장하고... 하며 갱신됨.
+		}
+		for (int i = 0; i < 4; i++) {
+			int xx = x + dx[i];
+			int yy = y + dy[i];
+			if (xx < 1 || xx >n || yy<1 || yy>n || map[xx][yy] > simba.s || ch[xx][yy] > 0) continue;
+			// 상하좌우를 탐색해보니 범위 바깥이거나, 심바크기보다 크거나, 전에 이미 탐색해서 1이 되어있다면, 지나간다.
+			// 범위 안이고, 사이즈가 심바보다 작고, 아직 심바가 가지 않은곳이면 큐에 넣어주고 그곳은 방문했다고 체크한다.
+			Q.push(State(xx, yy, z + 1)); // z는 큐의 top에서 꺼낸 심바정보가 갖고 있는 dis값임. 가장 처음에 Q.push(State(simba.x, simba.y, 0));로 초기화 햇으니 0부터 시작,
+			// 첫번째 for문안에서는 다 1로 들어가고, 두번째 for문은 꺼낸 top값에 1이 들어있으니 다 2로 들어가고.. 하며 누적됨.
+			ch[xx][yy] = 1;
+		}
+	}
+	cout << res;
+	return 0;
+}
+//struct Loc {
+//	int x, y;
+//	Loc(int a, int b) {
+//		x = a;
+//		y = b;
+//	}
+//};
+//
+//int main()
+//{
+//	int n, m, cntSec = 0, cntRabbit = 0, simbaSize = 2;
+//	bool flag = false;
+//
+//	queue<Loc> Q;
+//	vector<Loc> Rabbit;
+//
+//	cin >> n >> m;
+//
+//	for (int i = 1; i < n + 1; i++) {
+//		for (int j = 1; j < n + 1; j++) {
+//			cin >> a[i][j];
+//			if (a[i][j] == 9) Q.push(Loc( i, j )); //심바위치 저장
+//		}
+//	}
+//
+//	Loc simLoc = Q.front();
+//	Q.pop();
+//	for (int i = 0; i < 4; i++) {
+//		int curr = a[simLoc.x + dx[i]][simLoc.y + dy[i]]; //심바가 상하좌우 1초 이동으로 찾은 칸
+//		if (curr != 0 && curr != 9) {
+//			// 0과 9가 아니라면 토끼발견: 토끼개수 = 칸 개수, 토끼크기=저장된 숫자
+//			cntRabbit++;
+//			Rabbit.push_back(Loc(simLoc.x + dx[i], simLoc.y + dy[i])); //토끼가 발견된 위치 저장
+//		}
+//	}
+//	if (cntRabbit == 1 && a[Rabbit[0].x][Rabbit[0].y] < simbaSize) {
+//		simbaSize = simbaSize + (cntRabbit / simbaSize);
+//		Q.push(Loc(Rabbit[0].x, Rabbit[0].y));
+//	}
+//	else if (cntRabbit >= 2) {
+//		for (int i = 0; i < Rabbit.size(); i++) {
+//			//각 토끼 중 심바보다 작은 토끼에 대해 거리를 비교,
+//		}
+//	}
+//
+//
+//	
+//	return 0;
+//}

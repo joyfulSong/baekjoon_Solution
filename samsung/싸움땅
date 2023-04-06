@@ -1,0 +1,256 @@
+#include <iostream>
+#include <vector>
+#include <algorithm>
+using namespace std;
+
+#define MAXN 20
+#define MAXM 30
+class Player
+{
+public:
+    int p_x, p_y, dir, s_power, gun, point;
+    Player(int a, int b, int c, int d, int f, int e)
+    {
+        p_x = a;
+        p_y = b;
+        dir = c;
+        s_power = d; // 플레이어 초기 공격력과 총의 공격력은 서로 다름.
+        gun = f;
+        point = e; // 싸워서 획득하는 점수
+    } // 글로벌이면 0으로 초기화 되나?
+};
+
+int n, m, k;
+vector<int> map[MAXN][MAXM]; // 칸 하나에 총 여러개 담고, 오름차순 정렬해서 사용해야함.
+int dr[4] = { -1, 0, 1, 0 }, dc[4] = { 0, 1, 0, -1 };
+vector<Player> p_list;
+
+void changeDir(int& dir)
+{
+    if (dir < 2)
+    {
+        dir += 2;
+    }
+    else
+    {
+        dir -= 2;
+    }
+}
+
+bool isInMap(int d_r, int d_c)
+{
+    if (d_r < n + 1 && d_r > 0 && d_c < n + 1 && d_c > 0)
+    {
+        return true;
+    }
+    else return false;
+}
+
+void moveOnestep(int idx)
+{
+    int t_r = p_list[idx].p_x + dr[p_list[idx].dir];
+    int t_c = p_list[idx].p_y + dc[p_list[idx].dir];
+
+    if (!isInMap(t_r, t_c))
+    {
+        changeDir(p_list[idx].dir); // 바꾼 방향 바로 저장되어있음
+        t_r = p_list[idx].p_x + dr[p_list[idx].dir];
+        t_c = p_list[idx].p_y + dc[p_list[idx].dir];
+    }
+
+    p_list[idx].p_x += dr[p_list[idx].dir];
+    p_list[idx].p_y += dc[p_list[idx].dir];
+    
+    return;
+}
+
+int checkOtherPlayer(int idx)
+{
+    int dr_1 = p_list[idx].p_x;
+    int dc_1 = p_list[idx].p_y;
+
+    int thisPlayer(0);
+    // k플레이 * m명돌리기 * m명에 대한 확인 = 500*30*30 = 450000. 시간 초과는 안날듯
+    for (int i(1); i < m+1; ++i)
+    {
+        if (i == idx) continue;
+        if (dr_1 == p_list[i].p_x && dc_1 == p_list[i].p_y)
+        {
+            thisPlayer = i;
+            break; // 두명이 한칸에 존재할 시, 싸워서 다른 사람이 이동하게 되므로, 한칸에 두명 초과로 존재 불가
+        }
+    }
+    return thisPlayer;
+}
+
+// 아무도 없고 격자범위 안인 곳으로 한칸 이동
+void GoNoPlayerInMap(int idx)
+{
+    while(1)
+    {
+        //이동하려는 칸
+        int t_r = p_list[idx].p_x + dr[p_list[idx].dir];
+        int t_c = p_list[idx].p_y + dc[p_list[idx].dir];
+
+        int thisPlayer(0);
+        for (int i(1); i < m + 1; ++i)
+        {
+            if (i == idx) continue; // 자신이 있는 칸은 보지 않아야함.
+            if (t_r == p_list[i].p_x && t_c == p_list[i].p_y)
+            {
+                thisPlayer = i;
+                break;
+            }
+        }
+
+        // 그 칸에 이미 누가 있거나 맵 밖일 경우 방향 전환 우측 90도
+        if (thisPlayer != 0 || !isInMap(t_r, t_c))
+        {
+            if (p_list[idx].dir < 3)
+            {
+                p_list[idx].dir += 1;
+            }
+            else
+            {
+                p_list[idx].dir = 0;
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+
+    p_list[idx].p_x += dr[p_list[idx].dir];
+    p_list[idx].p_y += dc[p_list[idx].dir];
+
+    return;
+}
+
+
+void tryPickGun(int idx)
+{
+    // 오름차순 정렬해 가장 쎈 총만 보면 된다.
+    sort(map[p_list[idx].p_x][p_list[idx].p_y].begin(), map[p_list[idx].p_x][p_list[idx].p_y].end());
+
+    int strongestGun = map[p_list[idx].p_x][p_list[idx].p_y].back();
+    if (strongestGun != 0)
+    {
+        // 플레이어에게 총이 없는 경우
+        if (p_list[idx].gun == 0)
+        {
+            p_list[idx].gun = strongestGun;
+            map[p_list[idx].p_x][p_list[idx].p_y].pop_back();
+        }
+        // 플레이어에게 총이 있는 경우, 있는 총 중 가장 쎈 총하나로 교체한다.
+        else
+        {
+            if (p_list[idx].gun < strongestGun)
+            {
+                int left_gun = p_list[idx].gun;
+                p_list[idx].gun = strongestGun;
+                map[p_list[idx].p_x][p_list[idx].p_y].pop_back();
+                map[p_list[idx].p_x][p_list[idx].p_y].push_back(left_gun); // 이미 이동시키고, 총 정보만 따로 업데이트한 경우, 인덱스와 총정보가 맞지 않을 수 있음. tuple로 한번에 관리해야함.
+            }
+        }
+    }
+    
+    return;
+}
+
+void Play()
+{
+    // 1번부터 m번까지 시뮬레이션 진행
+    for (int i(1); i < m+1; ++i)
+    {
+        // 1) 한칸 이동
+        moveOnestep(i);
+
+        // 2) 이동 칸 확인
+        int existPlayer = checkOtherPlayer(i);
+        if (existPlayer) // 아무도 없으면 0 리턴
+        {
+            // 플레이어 간의 싸움
+            int p_1 = p_list[existPlayer].s_power + p_list[existPlayer].gun;
+            int p_2 = p_list[i].s_power + p_list[i].gun;
+            
+            if (p_1 > p_2)
+            {
+                p_list[existPlayer].point += p_1 - p_2;
+                // 진사람, 이긴사람 행동
+            }
+            else if (p_2 > p_1)
+            {
+                p_list[i].point += p_2 - p_1;
+                // 진사람, 이긴사람 행동
+
+            }
+            else // 점수 차이가 없는 경우, 초기 능력치로 비교, 총 얻고 내려놓는다.
+            {
+                if(p_list[existPlayer].s_power > p_list[i].s_power)
+                {
+                    // 진 사람 총 내려놓고 한칸 이동
+                    map[p_list[i].p_x][p_list[i].p_y].push_back(p_list[i].gun);
+                    p_list[i].gun = 0;
+                    GoNoPlayerInMap(i); // p_list[i].p_x, p_y 정보가 바뀜.
+                    
+                    // 진사람이 이동한 새로운 칸에 총 있으면 획득.
+                    tryPickGun(i);
+                    
+                    // 이긴 사람 모든 총 중에 제일 쎈 것으로 변경
+                    tryPickGun(existPlayer);
+                }
+                else //초기 능력치는 서로 모두 다르므로, == 의 경우는 없음.
+                {
+                    map[p_list[i].p_x][p_list[i].p_y].push_back(p_list[existPlayer].gun);
+                    p_list[existPlayer].gun = 0;
+                    GoNoPlayerInMap(existPlayer); // p_list[existPlayer].p_x, p_y 정보가 바뀜.
+
+                    tryPickGun(existPlayer);
+
+                    tryPickGun(i);
+                }
+            }
+        }
+        else
+        {
+            // 아무도 없고, 총이 있는 경우 총 획득
+            tryPickGun(i);
+        }
+    }
+}
+
+int main()
+{
+    cin >> n >> m >> k;
+
+    int gun;
+    for (int i(1); i < n+1; ++i)
+    {
+        for (int j(1); j < n+1; ++j)
+        {
+            cin >> gun; 
+            map[i][j].push_back(gun); // i, j칸의 0번째 총
+        }
+    }
+
+    int x, y, d, s;
+    for (int i(1); i < m+1; ++i)
+    {
+        cin >> x >> y >> d >> s;
+        p_list[i] = { x, y, d, s, 0, 0 };
+    }
+
+    for (int i(0); i < k; ++i)
+    {
+        Play();
+    }
+
+    for (int i(1); i < m+1; ++i)
+    {
+        cout << p_list[i].point << " ";
+    }
+    cout << '\n';
+
+    return 0;
+}

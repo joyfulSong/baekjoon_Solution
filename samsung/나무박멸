@@ -1,0 +1,344 @@
+#include <iostream>
+#include <vector>
+
+#define MAXN 20
+
+using namespace std;
+
+int n, m, k, c, killNum;
+
+int map[MAXN][MAXN], origianlTree[MAXN][MAXN], poisonedMap[MAXN][MAXN];
+// 상하좌우
+int dx[4] = { -1, 1, 0, 0 }, dy[4] = { 0, 0, -1, 1 };
+// 네개 대각선 방향 (10, 2, 4, 8시 방향)
+int cx[4] = { -1, -1, 1, 1 }, cy[4] = { -1, 1, 1, -1 };
+
+void printPoisonMap()
+{
+	for (int i(0); i < n; ++i)
+	{
+		for (int j(0); j < n; ++j)
+		{
+			cout << poisonedMap[i][j] << " ";
+		}
+		cout << '\n';
+	}
+	cout << '\n';
+
+	return;
+}
+
+void printMap()
+{
+	for (int i(0); i < n; ++i)
+	{
+		for (int j(0); j < n; ++j)
+		{
+			cout << map[i][j] << " ";
+		}
+		cout << '\n';
+	}
+	cout << '\n';
+
+	return;
+}
+
+void printOriginalMap()
+{
+	for (int i(0); i < n; ++i)
+	{
+		for (int j(0); j < n; ++j)
+		{
+			cout << origianlTree[i][j] << " ";
+		}
+		cout << '\n';
+	}
+	cout << '\n';
+
+	return;
+}
+
+bool isInMap(int x, int y)
+{
+	if (x >= 0 && x < n && y >= 0 && y < n)
+	{
+		return true;
+	}
+	return false;
+}
+
+int checkNearFourNum(int x, int y)
+{
+	int hasTree(0);
+	int t_x(0), t_y(0);
+	for (int i(0); i < 4; ++i) // 상하좌우 탐색
+	{
+		t_x = x + dx[i];
+		t_y = y + dy[i];
+
+		if (isInMap(t_x, t_y) && poisonedMap[t_x][t_y] == 0 && map[t_x][t_y] > 0) // 빈칸이거나 벽이 아니고, 제초제가 뿌려진 자리도 아니어야함.
+		{
+			hasTree += 1;
+		}
+	}
+	return hasTree;
+}
+
+void spreadTree(int x, int y)
+{
+	int emptyArea(0);
+	int t_x(0), t_y(0);
+	for (int i(0); i < 4; ++i)
+	{
+		t_x = x + dx[i];
+		t_y = y + dy[i];
+
+		if (isInMap(t_x, t_y) && poisonedMap[t_x][t_y] == 0)
+		{
+			// 원래부터 비어있던 곳이거나, 나무가 있더라도 기존 나무가 아닌 + (벽(-1), 제초제(< 0 )가 아닌 곳
+			if (map[t_x][t_y] == 0 || (origianlTree[t_x][t_y] == 0 && map[t_x][t_y] > 0))
+			{
+				emptyArea += 1;
+			}
+		}
+	}
+
+	if (emptyArea != 0)
+	{
+		 std::cout << "spread Tree: x " << x << ", y " << y << " ";
+		 std::cout << "emptyArea count " << emptyArea << " ";
+
+		int SplitTreeNum = map[x][y] / emptyArea;
+		 std::cout << "SplitTreeNum: " << SplitTreeNum << '\n';
+		for (int i(0); i < 4; ++i)
+		{
+			t_x = x + dx[i];
+			t_y = y + dy[i];
+
+			if (isInMap(t_x, t_y) && poisonedMap[t_x][t_y] == 0)
+			{
+				// 기존 나무에 대해서는 더해짐.
+				if (map[t_x][t_y] == 0 || (origianlTree[t_x][t_y] == 0 && map[t_x][t_y] > 0))
+				{
+					map[t_x][t_y] += SplitTreeNum;
+				}
+			}
+		}
+	}
+
+	return;
+}
+
+int tryKiller(int x, int y)
+{
+	int t_x(0), t_y(0), Killsum(map[x][y]);
+	for (int i(0); i < 4; ++i)
+	{
+		for (int j(1); j < k + 1; ++j)
+		{
+			// k개 만큼 대각선 이동 시도
+			t_x = x + cx[i] * j;
+			t_y = y + cy[i] * j;
+
+			if (isInMap(t_x, t_y) && poisonedMap[t_x][t_y] == 0)
+			{
+				// 벽, 제초제 아니고, 나무가 있다
+				if (map[t_x][t_y] > 0)
+				{
+					cout << "x:" << x << ", y:" << y << "trying killing loc " << t_x << ", " << t_y << endl;
+					Killsum += map[t_x][t_y];
+				}
+				// 나무가 없거나 벽이면 더이상 대각선 방향으로 가지 않는다. 다음 대각선 방향으로 변경.
+				else if (map[t_x][t_y] == 0 || map[t_x][t_y] == -1)
+				{
+					break; // 두번째 for문만 나간다.
+				}
+			}
+
+		}
+	}
+
+	return Killsum;
+}
+
+void simulate(int year)
+{
+	// 1) 상하좌우 칸 개수만큼 성장
+	for (int i(0); i < n; ++i)
+	{
+		for (int j(0); j < n; ++j)
+		{
+			if (map[i][j] > 0)
+			{
+				map[i][j] += checkNearFourNum(i, j);
+			}
+		}
+	}
+
+	 printMap();
+
+	// 2) 번식
+	for (int i(0); i < n; ++i)
+	{
+		for (int j(0); j < n; ++j)
+		{
+			// 번식은 기존 나무에 대해서만 일어남
+			if (origianlTree[i][j] == 1)
+			{
+				spreadTree(i, j);
+			}
+		}
+	}
+	 printMap();
+
+	// 3) 제초제 뿌릴 곳 찾기
+	int sp_x(0), sp_y(0), curIterKill(0), maxIterKill(0);
+	for (int i(0); i < n; ++i)
+	{
+		for (int j(0); j < n; ++j)
+		{
+			// 제초제 선정 위치를 나무가 있는 곳만이 아닌, 제초제가 뿌려진 위치와 벽을 제외한 모든 점에서 고려해야 합니다.
+			if (poisonedMap[i][j] < 0 || map[i][j] == -1) continue;
+			curIterKill = tryKiller(i, j);
+
+			 cout << "trykiller loc is " << i << ", " << j << " killing number: " << curIterKill << '\n';
+			// 제일 많이 죽일 수 있는 위치로 업데이트
+			if (curIterKill > maxIterKill)
+			{
+				sp_x = i;
+				sp_y = j;
+				maxIterKill = curIterKill;
+			}
+			else if (curIterKill == maxIterKill)
+			{
+				if (i < sp_x)
+				{
+					sp_x = i;
+					sp_y = j;
+					maxIterKill = curIterKill;
+				}
+				else if (i == sp_x)
+				{
+					if (j < sp_y)
+					{
+						sp_x = i;
+						sp_y = j;
+						maxIterKill = curIterKill;
+					}
+				}
+			}
+		}
+	}
+	killNum += maxIterKill;
+	 cout << "final killNum " << killNum << ", s_x " << sp_x << ", s_y " << sp_y << '\n';
+
+	// 제초제는 c년간 유지되고, c+1년일 때 제거가능하다.
+	//if (year == c + 1)
+	//{
+	for (int i(0); i < n; ++i)
+	{
+		for (int j(0); j < n; ++j)
+		{
+			if (poisonedMap[i][j] < 0)
+			{
+				poisonedMap[i][j] += 1; // 1년이 지났음을 표시하고, 0이되면 더이상 제초제가 없으므로 맵 갱신
+			}
+			/*if (poisonedMap[i][j] == 0)
+			{
+				map[i][j] = 0;
+			}*/
+		}
+	}
+	//}
+
+	 cout << "year: " << year << '\n';
+	 printPoisonMap();
+
+	// 3 - 1) 제초제 뿌리기
+	
+	poisonedMap[sp_x][sp_y] = -c;
+
+	if (map[sp_x][sp_y] > 0)
+	{
+		map[sp_x][sp_y] = 0;
+		for (int i(0); i < 4; ++i)
+		{
+			int t_x(sp_x), t_y(sp_y);
+
+			for (int j(1); j < k + 1; ++j) // 0부터 해야 시작점을 지울 수 있게됨.
+			{
+				// k개 만큼 대각선 이동
+				t_x = t_x + cx[i];
+				t_y = t_y + cy[i];
+
+				if (isInMap(t_x, t_y)) // 제초제가 있는지는 확인할 필요 없음. 다시 뿌리면 새로 갱신됨.
+				{
+					// 나무가 있다
+					if (map[t_x][t_y] > 0)
+					{
+						cout << "spreading to tree, t_x " << t_x << ", t_y " << t_y << "/ i: " << i << ", j: " << j << '\n';
+						poisonedMap[t_x][t_y] = -c; // -c ~ -1 까지 +1씩 되며 해가 가고, 0이 되면 제초제가 없어진 상태
+						map[t_x][t_y] = 0; // 뿌렸으면 0으로 바꿔줘야함.
+					}
+					// 나무가 없거나 제초제 뿌려져있는 이면 더이상 대각선 방향으로 가지 않는다. 다음 대각선 방향으로 변경.
+					else if (map[t_x][t_y] == 0) // 문제에서는 벽에도 뿌려도  된다고 했지만.. 답코드는 안그럼.
+					{
+						cout << "spreading to wall or no tree, t_x " << t_x << ", t_y " << t_y << "/ i: " << i << ", j: " << j << '\n';
+						poisonedMap[t_x][t_y] = -c;
+						break; // 두번째 for문만 나간다.
+					}
+				}
+
+
+
+			}
+		}
+	}
+
+	cout << "!! poison" << endl;
+	printPoisonMap();
+	printMap();
+
+	// original map 갱신
+	for (int i(0); i < n; ++i)
+	{
+		for (int j(0); j < n; ++j)
+		{
+			if (map[i][j] > 0)
+			{
+				origianlTree[i][j] = 1;
+			}
+		}
+	}
+}
+
+int main()
+{
+	cin >> n >> m >> k >> c;
+
+	int t_tree(0);
+	for (int i(0); i < n; ++i)
+	{
+		for (int j(0); j < n; ++j)
+		{
+			cin >> t_tree;
+			map[i][j] = t_tree;
+			if (t_tree > 0)
+			{
+				origianlTree[i][j] = 1; // 번식 시 기존 나무에 대해서만 나눠져야함.
+			}
+		}
+	}
+
+	 printOriginalMap();
+	 cout << '\n';
+
+	for (int i(1); i < m + 1; ++i)
+	{
+		simulate(i);
+	}
+
+	cout << killNum << '\n';
+
+	return 0;
+}

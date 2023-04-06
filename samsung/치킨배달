@@ -1,0 +1,47 @@
+https://yabmoons.tistory.com/50 
+/*
+N×N인 도시
+r과 c는 1부터 시작
+빈 칸0, 치킨집2, 집1
+
+치킨 거리는 집과 가장 가까운 치킨집 사이의 거리
+	치킨 거리는 집을 기준으로 정해지며, 
+	각각의 집은 치킨 거리를 가지고 있다. 
+	도시의 치킨 거리는 모든 집의 치킨 거리의 합
+ (r1, c1)과 (r2, c2) 사이의 거리는 |r1-r2| + |c1-c2|
+
+ 도시의 치킨 거리가 가장 작게, 도시에 있는 치킨집 중에서 최대 M개 고르기
+ 
+ 치킨집 중 중복되지 않게, 순서 상관없이 최대 m개 고르기 -> 조합문제
+	
+	해당 조합에서의 치킨거리가 제일 작은 조합을 갱신한다.
+*/
+
+
+/*
+* 치킨집 배열 - 숫자에 대응되는 치킨집 알 수 있게
+* 치킨집m개 고르기
+*	중복 방지: check 배열 필요, 순서 상관없이 : idx전달, m개: 탈출 조건, 치킨집 조합 저장 벡터
+* 각각의 집의 치킨 거리 구하기
+*	집 하나씩에 대해 모든 치킨집과의 거리를 구해 가장 작은 것을 얻고, 각 집이 가진 치킨거리 합을 구함.
+*	이것이 최소가 되는 조합을 고르면 됨.
+*/
+
+void Select_Chicken(int Idx, int Cnt)
+{
+    if (Cnt == M)
+    {
+        Answer = Min(Answer, Calculate_Distance());
+        return;
+    }
+
+    for (int i = Idx; i < Chicken_Num; i++)
+    {
+        if (Select[i] == true) continue;
+        Select[i] = true;
+        V.push_back(Chicken[i]);
+        Select_Chicken(i, Cnt + 1);
+        Select[i] = false;
+        V.pop_back();
+    }
+}

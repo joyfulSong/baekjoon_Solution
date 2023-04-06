@@ -1,0 +1,63 @@
+
+#include <iostream>
+#include <vector> 
+#include <queue>
+#include <algorithm>
+
+using namespace std;
+int n, minCost = 2147000000, maxCost = -2147000000;
+vector<int> cal, num;
+// 체크 배열 안만들고 cal 배열의 값을 더했다가 빼줬다가 하면서 복원시킴.
+
+int DFS(int L, int sum) {
+	if (L == n) {
+		if (sum < minCost) minCost = sum;
+		else if (sum > maxCost) maxCost = sum;
+	}
+	//for문이 안돌아도 재귀에 의해 각 if문 조건이 false될때까지 현재의 if문 내에서 DFS가 반복일어나고, 끝나면 스택프레임 사라지면서 다시 채워넣은뒤 다음 if문으로 넘어간다. 
+	else {
+		if (cal[0] > 0) {
+			cal[0]--;
+			DFS(L + 1, sum + num[L]);
+			cal[0]++;
+		}
+		if (cal[1] > 0) {
+			cal[1]--;
+			DFS(L + 1, sum - num[L]);
+			cal[1]++;
+		}
+		if (cal[2] > 0) {
+			cal[0]--;
+			DFS(L + 1, sum * num[L]);
+			cal[2]++;
+		}
+		if (cal[3] > 0) {
+			cal[0]--;
+			DFS(L + 1, sum / num[L]);
+			cal[3]++;
+		}
+	}
+}
+
+int main()
+{
+	int a;
+	cin >> n;
+	num.push_back(0);
+	for (int i = 0; i < n; i++) {
+		cin >> a;
+		num.push_back(a);
+	}
+
+	cal.push_back(0);
+	for (int i = 0; i < 4; i++) {
+		cin >> a;
+		cal.push_back(a);
+	}
+
+	DFS(1, num[0]); // 첫번째 수를 res로 바로 넘기고, L=1 즉 두번째 수부터 처리하려고.
+
+	cout << maxCost << endl;
+	cout << minCost << endl;
+	return 0;
+}
